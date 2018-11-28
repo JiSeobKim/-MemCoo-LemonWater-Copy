@@ -44,7 +44,7 @@ class ShowMembershipVC: UIViewController, UIGestureRecognizerDelegate {
         }
         
         if let topItem = self.navigationController?.navigationBar.topItem {
-            topItem.backBarButtonItem = UIBarButtonItem(title: "", style: UIBarButtonItemStyle.plain, target: nil, action: nil)
+            topItem.backBarButtonItem = UIBarButtonItem(title: "", style: UIBarButtonItem.Style.plain, target: nil, action: nil)
         }
         
         //타이틀 명 변경
@@ -56,14 +56,8 @@ class ShowMembershipVC: UIViewController, UIGestureRecognizerDelegate {
         AutoBrightCheck()
         
         
-        //하단에 그림자 추가
-//        ShowLogo.layer.borderColor = UIColor.gray.cgColor
-//        ShowLogo.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
-//        ShowLogo.layer.shadowOffset = CGSize(width : 0,height: 2.0)
-//        ShowLogo.layer.shadowOpacity = 0.5
-//        ShowLogo.layer.shadowRadius = 0.0
-//        ShowLogo.layer.masksToBounds = false
-//        ShowLogo.layer.cornerRadius = 10.0
+        self.ShowLogo.layer.applyLogoShadowLayout()
+        
         
         
     }
@@ -86,8 +80,8 @@ class ShowMembershipVC: UIViewController, UIGestureRecognizerDelegate {
     
     
     //밝기 제스쳐
-    func pan(recognizer:UIPanGestureRecognizer){
-        if recognizer.state == UIGestureRecognizerState.changed || recognizer.state == UIGestureRecognizerState.ended {
+    @objc func pan(recognizer:UIPanGestureRecognizer){
+        if recognizer.state == UIGestureRecognizer.State.changed || recognizer.state == UIGestureRecognizer.State.ended {
             let velocity:CGPoint = recognizer.velocity(in: self.view)
             
             if velocity.y > 0{
@@ -113,7 +107,7 @@ class ShowMembershipVC: UIViewController, UIGestureRecognizerDelegate {
         if let membership = cellData {
             ShowLogo.image = membership.toImage?.image as? UIImage
             ShowBarcode.image = generateBarcodeFromString(string: membership.barcode)
-            barcodeLabel.text = addHyphen(data: membership.barcode!)
+            barcodeLabel.text = membership.barcode?.addHyphen()
             
             
           

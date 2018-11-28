@@ -9,8 +9,10 @@
 import UIKit
 import CoreData
 import TesseractOCR
+import RxCocoa
+import RxSwift
 
-class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, NSFetchedResultsControllerDelegate, UIGestureRecognizerDelegate, UICollectionViewDelegateFlowLayout, G8TesseractDelegate, UIImagePickerControllerDelegate,UINavigationControllerDelegate {
+class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, NSFetchedResultsControllerDelegate, UIGestureRecognizerDelegate, UICollectionViewDelegateFlowLayout, G8TesseractDelegate, UIImagePickerControllerDelegate,UINavigationControllerDelegate, UISearchBarDelegate {
     
     
     //
@@ -18,11 +20,14 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
     //
     @IBOutlet weak var collectionView: UICollectionView!
     var controller: NSFetchedResultsController<Membership>!
+    var listData : [String] = []
     
     var originalImage: UIImage!
     let imagePicker = UIImagePickerController()
 
     
+    let searchController = UISearchController(searchResultsController: nil)
+    let refreshControl = UIRefreshControl()
     
     //
     //viewLoad
@@ -42,29 +47,50 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
         lpgr.delaysTouchesBegan = true
         self.collectionView?.addGestureRecognizer(lpgr)
       
-      
         
+        
+        if #available(iOS 11.0, *) {
+//            self.navigationController?.navigationItem.searchController = searchController
+            searchController.hidesNavigationBarDuringPresentation = false
+            searchController.searchBar
+            .searchBarStyle
+             = .minimal
+            
+            
+            self.navigationItem.searchController = searchController
+        }
+        
+        self.parent?.view.backgroundColor = .white
     }
-    
-
-    
-    
-
     
     
     
     override func viewWillAppear(_ animated: Bool) {
-        // 뷰2->뷰1는 viewDidLoad로 못함
-        
         
         attemptFetch()
         self.collectionView.reloadData()
         
         
+        
+        
+        
+        
+        self.tabBarController?.tabBar.layer.masksToBounds = false
+        self.tabBarController?.tabBar.layer.shadowColor = UIColor.lightGray.cgColor
+        self.tabBarController?.tabBar.layer.shadowOpacity = 1
+        self.tabBarController?.tabBar.layer.shadowOffset = CGSize(width: 0, height: 2)
+        self.tabBarController?.tabBar.layer.shadowRadius = 2
+        self.tabBarController?.tabBar.layer.borderColor = UIColor.gray.withAlphaComponent(0.5).cgColor
+        self.tabBarController?.tabBar.layer.borderWidth = 0.5
+        self.tabBarController?.tabBar.clipsToBounds = true
+        
+        
+        
+        
     }
     
-    func handleLongPress(_ gestureReconizer: UILongPressGestureRecognizer) {
-        if gestureReconizer.state != UIGestureRecognizerState.began {
+    @objc func handleLongPress(_ gestureReconizer: UILongPressGestureRecognizer) {
+        if gestureReconizer.state != UIGestureRecognizer.State.began {
             return
         }
         
@@ -150,16 +176,10 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
     
     //셀 재사용을 위한 정의
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "viewcell", for: indexPath) as! MembershipCollectionVCell
         // 설정할 cell 선택(빨간 "viewcell"은 어트리뷰트인스펙터의 identifier)
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "viewcell", for: indexPath) as! MembershipCollectionVCell
         
-        
-                
-        configureCell(cell: cell, indexPath: indexPath as NSIndexPath)
-        //로고의 이미지/ 텍스트 값 대입
-        cell.layer.borderWidth = 1
-        cell.layer.borderColor = UIColor(netHex: 0xF66623,alpha: 0.3).cgColor
-        
+        configureCell(cell: cell, indexPath: indexPath)
         
         return cell
         
@@ -167,16 +187,20 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = UIScreen.main.bounds.width
-        let height = collectionView.frame.height
-        return CGSize(width: (width/3) - 1.3, height: (height/4) - 1.3) // width & height are the same to make a square cell
+        let calcurate = (width - 80) / 3
+        return CGSize(width: calcurate, height: calcurate) // width & height are the same to make a square cell
     }
     
     //셀 생성 정의
-    func configureCell(cell: MembershipCollectionVCell, indexPath: NSIndexPath) {
+    func configureCell(cell: MembershipCollectionVCell, indexPath: IndexPath) {
+        
+        let innerView = cell.contentView.viewWithTag(1)
+        innerView?.layer.applyCellBolderLayout()
+        cell.layer.applyCellShadowLayout()
         
         //update cell
-        
-        let item = controller.object(at: indexPath as IndexPath)
+        let it = controller
+        let item = controller.object(at: indexPath)
         cell.configureCell(item: item)
     }
     
@@ -223,7 +247,7 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
             ad.clipboardActionSheet = 2
             
             //이미지 선택 뷰.
-            self.imagePicker.sourceType = UIImagePickerControllerSourceType.savedPhotosAlbum    //.photoLibrary
+            self.imagePicker.sourceType = UIImagePickerController.SourceType.savedPhotosAlbum    //.photoLibrary
             //imagePicker.mediaTypes = [kUTTypeImage as String]
             self.imagePicker.allowsEditing = false
             self.present(self.imagePicker, animated: true, completion: nil)
@@ -251,8 +275,11 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
     }
     
     //사진 앱 접근을 위한 메소드.
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String: Any]) {
-        if let image = info[UIImagePickerControllerOriginalImage] as? UIImage {
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+// Local variable inserted by Swift 4.2 migrator.
+let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
+
+        if let image = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.originalImage)] as? UIImage {
             self.originalImage = image
             picker.dismiss(animated: true, completion: nil)
             
@@ -303,3 +330,13 @@ class MembershipCollectionVC: UIViewController, UICollectionViewDelegate, UIColl
     
 }
 
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromUIImagePickerControllerInfoKeyDictionary(_ input: [UIImagePickerController.InfoKey: Any]) -> [String: Any] {
+	return Dictionary(uniqueKeysWithValues: input.map {key, value in (key.rawValue, value)})
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromUIImagePickerControllerInfoKey(_ input: UIImagePickerController.InfoKey) -> String {
+	return input.rawValue
+}

@@ -100,7 +100,7 @@ class CouponDetailViewController: UIViewController, UINavigationControllerDelega
         }
         
         if let topItem = self.navigationController?.navigationBar.topItem {
-            topItem.backBarButtonItem = UIBarButtonItem(title: "", style: UIBarButtonItemStyle.plain, target: nil, action: nil)
+            topItem.backBarButtonItem = UIBarButtonItem(title: "", style: UIBarButtonItem.Style.plain, target: nil, action: nil)
         }
                 
         //사용 완료 테두리
@@ -113,8 +113,8 @@ class CouponDetailViewController: UIViewController, UINavigationControllerDelega
     }
     
     //밝기 제스쳐
-    func pan(recognizer:UIPanGestureRecognizer){
-        if recognizer.state == UIGestureRecognizerState.changed || recognizer.state == UIGestureRecognizerState.ended {
+    @objc func pan(recognizer:UIPanGestureRecognizer){
+        if recognizer.state == UIGestureRecognizer.State.changed || recognizer.state == UIGestureRecognizer.State.ended {
             let velocity:CGPoint = recognizer.velocity(in: self.view)
             
             if velocity.y > 0{
@@ -134,7 +134,7 @@ class CouponDetailViewController: UIViewController, UINavigationControllerDelega
     //아이템 데이타를 로드하는 펑션
     func loadCouponData() {
         if let coupon = couponToDetail {
-            barcode.text = addHyphen(data: coupon.barcode!)
+            barcode.text = coupon.barcode?.addHyphen()
             barcodeImg.image = generateBarcodeFromString(string: coupon.barcode)
             expireDate.text = displayTheDate(theDate: coupon.expireDate as! Date)
             logoImage.image = coupon.toImage?.image as! UIImage?
